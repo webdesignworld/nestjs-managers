@@ -1,44 +1,68 @@
+
 import {
+  Body,
   Controller,
   Get,
   Post,
-  Put,
-  Delete,
-  Body,
   Param,
+  Patch,
+  Delete,
+  HttpStatus,
+  HttpCode,
+  UseGuards,
 } from '@nestjs/common';
-import { CreateChallengeDto } from './dto/create-challenge.dto';
 import { ChallengesService } from './challenges.service';
-import { Challenge } from './interfaces/challenge.interface';
+import { CreateChallengeDto } from './dto/create-challenge.dto';
+import { UpdateChallengeDto } from './dto/update-challenge.dto';
+import { Roles } from '../auth/decorator/roles.decorator';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { AuthenticatedUser } from '../auth/decorator/authenticated-user.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
-@Controller('challenges') //need proper services
+@Controller('challenges')
+@UseGuards(AuthGuard, RolesGuard)
+
+@Roles('manager')
 export class ChallengesController {
   constructor(private readonly challengesService: ChallengesService) {}
-  @Get() //get all challenges
-  async findAll(): Promise<Challenge[]> {
+
+  @Get()
+
+  async getAllChallenges(@AuthenticatedUser() user: any) {
+   
     return this.challengesService.findAll();
   }
 
-  @Get(':id') //get challenge by id
-  async findOne(@Param('id') id): Promise<Challenge> {
-    return this.challengesService.findOne(id);
+  @Get(':id')
+  async getChallengeById(
+    @Param('id') id: string,
+    @AuthenticatedUser() user: any, 
+  ) {
+    return this.challengesService.findById(id);
   }
 
-  @Post() //update
-  create(@Body() createChallengeDto: CreateChallengeDto): string {
-    return `Name ${createChallengeDto} Desc: ${createChallengeDto.description}`;
+  @Post()
+  async createChallenge(
+    @Body() createChallengeDto: CreateChallengeDto,
+    @AuthenticatedUser() user: any,
+  ) {
+ 
+    return this.challengesService.create(createChallengeDto);
   }
 
-  @Delete(':id') //delete
-  delete(@Param('id') id): string {
-    return `Delete ${id}`;
+  @Patch(':id')
+  async updateChallenge(
+    @Param('id') id: string,
+    @Body() updateChallengeDto: UpdateChallengeDto,
+    @AuthenticatedUser() user: any,
+  ) {
+    return this.challengesService.update(id, updateChallengeDto);
   }
 
-  @Put(':id') //update by id
-  update(
-    @Body() updateChallengeDto: CreateChallengeDto,
-    @Param('id') id,
-  ): string {
-    return `Update ${id} - Name: ${updateChallengeDto.name}`;
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteChallenge(@Param('id') id: string) {
+    await this.challengesService.delete(id);
+    return;
   }
 }
