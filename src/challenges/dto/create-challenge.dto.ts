@@ -6,7 +6,7 @@ import {
   IsOptional,
   IsNumber,
 } from 'class-validator';
-import { DifficultyLevel } from '../schemas/challenge.schema'; // Adjust import path
+import { DifficultyLevel } from '../schemas/challenge.schema'; 
 
 export class CreateChallengeDto {
   @IsString()

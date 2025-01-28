@@ -18,20 +18,21 @@ export class AuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers['authorization'];
 
- 
+    // 1. Check if Authorization header exists
+    const authHeader = request.headers['authorization'];
     if (!authHeader) {
       throw new UnauthorizedException('Missing Authorization header');
     }
 
-
+    // 2. Split into "Bearer" and <token>
     const [bearer, token] = authHeader.split(' ');
-    if (bearer !== 'Bearer' || !token) {
+    if (bearer.toLowerCase() !== 'bearer' || !token) {
       throw new UnauthorizedException('Invalid token format');
     }
+    console.log(authHeader)
 
-
+    // 3. Verify token
     let payload: any;
     try {
       payload = this.jwtService.verify(token);
@@ -39,28 +40,28 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
+    // 4. Attach user info to request (for controllers/decorators)
+    request.user = { id: payload.id, role: payload.role };
 
-    const userRole = payload.role;
-
-    request.user = { id: payload.id, role: userRole };
-
- 
+    // 5. Check roles (if any are required)
     const requiredRoles = this.reflector.getAllAndOverride<string[]>(
       ROLES_KEY,
       [context.getHandler(), context.getClass()],
     );
 
-
     if (!requiredRoles || requiredRoles.length === 0) {
+      // No role restrictions, so this route is allowed
       return true;
     }
 
-  
+    // 6. Ensure user's role is in the allowed roles
+    const userRole = payload.role;
     const hasRole = requiredRoles.includes(userRole);
+
     if (!hasRole) {
-      throw new ForbiddenException(`Requires one of roles: [${requiredRoles}]`);
+      throw new ForbiddenException(`Requires one of roles: [${requiredRoles.join(', ')}]`);
     }
 
-    return true; // passed checks
+    return true;
   }
 }
